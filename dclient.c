@@ -8,7 +8,15 @@ void menu();
 char get_choice();
 void list_files(FILE *s);
 void download(FILE *s);
+void download_all(FILE *s);
+void save_file(FILE *s, char file_name[], int size);
 void quit(FILE *s);
+
+typedef struct file
+{
+    char name[25];
+    int size;
+} file;
 
 int main()
 {
@@ -35,6 +43,11 @@ int main()
             case 'D':
                 download(s);
                 break;
+            
+            case 'a':
+            case 'A':
+                download_all(s);
+                break;
                 
             case 'q':
             case 'Q':
@@ -43,7 +56,7 @@ int main()
                 break;
                 
             default:
-                printf("Choice must be d, l, or q\n");
+                printf("Choice must be d, l, a, or q\n");
         }
     }
 }
@@ -87,7 +100,7 @@ FILE * connect_to_server()
  */
 void menu()
 {
-    printf("== MENU ==\n");
+    printf("-- MENU --\n");
     printf("L) List files\n");
     printf("D) Download a file\n");
     printf("A) Download all files\n");
@@ -118,7 +131,6 @@ void list_files(FILE *s)
     
     // Get response and check for error
     char response[1000];
-    char code[10];
     fgets(response, 1000, s);
     if (strcmp(response, "+OK\n") != 0)
     {
@@ -127,10 +139,17 @@ void list_files(FILE *s)
     }
     
     // Print response
+    int file_num = 1;
+    printf("Num\tFilename\tSize\n");
     while (fgets(response, 1000, s))
     {
         if (strcmp(response, ".\n") == 0) break;
-        printf("%s", response);
+        char num[20];
+        char name[20];
+        sscanf(response, "%s %s", num, name);
+        printf("%d\t%s\t%s", file_num, name, num);
+        printf("\n");
+        file_num++;
     }
     printf("\n");
 }
@@ -144,7 +163,7 @@ void list_files(FILE *s)
 void download(FILE *s)
 {
     // Prompt user
-    printf("What file? ");
+    printf("What file? (num/filename) ");
     char file_name[100];
     fgets(file_name, 100, stdin);
     file_name[strlen(file_name) - 1] = '\0';
@@ -157,17 +176,79 @@ void download(FILE *s)
     sscanf(size_response, "+OK %d", &size);
     
     // GET command
-    printf("Downloading %s...", file_name);
     fprintf(s, "GET %s\n", file_name);
     char response[1000];
-    char code[10];
     fgets(response, 1000, s);
     if (strcmp(response, "+OK\n") != 0)
     {
         fprintf(stderr, "Something went wrong!\n");
         exit(4);
     }
+    
+    // Save file
+    save_file(s, file_name, size);
+}
 
+/*
+ * Download all files.
+ */
+void download_all(FILE *s)
+{
+    // LIST command
+    fprintf(s, "LIST\n");
+    
+    // Get response and check for error
+    char list[1000];
+    fgets(list, 1000, s);
+    if (strcmp(list, "+OK\n") != 0)
+    {
+        fprintf(stderr, "Something went wrong!\n");
+        exit(5);
+    }
+    
+    // Create array of filenames and sizes
+    file *files = malloc(20 * sizeof(file));
+    int file_count = 0;
+    for (int i = 0; ; i++)
+    {
+        // Break at end of list
+        if (strcmp(list, ".\n") == 0) break;
+        
+        // TODO
+        // Check if files array needs to be longer
+        
+        // Determine filename and size
+        fgets(list, 1000, s);
+        char file_name[20];
+        int size;
+        sscanf(list, "%d %s", &size, file_name);
+        strcpy(files[i].name, file_name);
+        files[i].size = size;
+        file_count++;
+    }
+    
+    // Save all files
+    char response[1000];
+    for (int i = 0; i < file_count; i++)
+    {
+        // GET command
+        fprintf(s, "GET %s\n", files[i].name);
+        fgets(response, 1000, s);
+        if (strcmp(response, "+OK\n") != 0)
+        {
+            fprintf(stderr, "Something went wrong!\n");
+            exit(6);
+        }
+        
+        save_file(s, files[i].name, files[i].size);
+    }
+}
+
+void save_file(FILE *s, char file_name[], int size)
+{
+    printf("Downloading %s \u2592", file_name);
+    fflush(stdout);
+    
     // Open file for writing and check
     FILE *out = fopen(file_name, "wb");
     if (!out)
@@ -175,6 +256,10 @@ void download(FILE *s)
         fprintf(stderr, "Can't write to %s\n", file_name);
         exit(1);
     }
+    
+    // Counters for progress bar
+    int tick_size = size / 20;
+    int progress = 1;
     
     // Save data to file
     unsigned char data[100];
@@ -187,6 +272,12 @@ void download(FILE *s)
             got = fread(data, sizeof(unsigned char), 100, s);
             fwrite(data, sizeof(unsigned char), got, out);
             so_far += got;
+            if (tick_size * progress < so_far)
+            {
+                printf("\u2588");
+                fflush(stdout);
+                progress++;
+            }
         }
         else
         {
@@ -195,9 +286,10 @@ void download(FILE *s)
             break;
         }
     }
-    fclose(out);
     
-    printf("DONE\n\n");
+    // Close file
+    fclose(out);
+    printf("\u2592 DONE\n");
 }
 
 /* 
