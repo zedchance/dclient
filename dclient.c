@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <libsocket/libinetsocket.h>
 
 FILE * connect_to_server();
@@ -12,35 +13,38 @@ void quit(FILE *s);
 int main()
 {
     // Connect
-    FILE * s = connect_to_server();
+    FILE *s = connect_to_server();
     
-    // Menu
-    menu();
-    
-    // Get choice
-    char choice = get_choice();
-    
-    // Handle choice
-    switch(choice)
+    while (1)
     {
-        case 'l':
-        case 'L':
-            list_files(s);
-            break;
+        // Menu
+        menu();
         
-        case 'd':
-        case 'D':
-            download(s);
-            break;
+        // Get choice
+        char choice = get_choice();
+        
+        // Handle choice
+        switch(choice)
+        {
+            case 'l':
+            case 'L':
+                list_files(s);
+                break;
             
-        case 'q':
-        case 'Q':
-            quit(s);
-            exit(0);
-            break;
-            
-        default:
-            printf("Choice must be d, l, or q\n");
+            case 'd':
+            case 'D':
+                download(s);
+                break;
+                
+            case 'q':
+            case 'Q':
+                quit(s);
+                exit(0);
+                break;
+                
+            default:
+                printf("Choice must be d, l, or q\n");
+        }
     }
 }
 
@@ -65,6 +69,16 @@ FILE * connect_to_server()
         fprintf(stderr, "Couldn't convert socket number.\n");
         exit(2);
     }
+    
+    // Check for greeting
+    char response[100];
+    fgets(response, 100, f);
+    if (strcmp(response, "+OK Greetings\n") != 0)
+    {
+        fprintf(stderr, "Didn't get the OK\n");
+        exit(3);
+    }
+    
     return f;
 }
 
@@ -73,9 +87,10 @@ FILE * connect_to_server()
  */
 void menu()
 {
-    printf("List files\n");
-    printf("Download a file\n");
-    printf("Quit\n");
+    printf("L) List files\n");
+    printf("D) Download a file\n");
+    printf("A) Download all files\n");
+    printf("Q) Quit\n");
     printf("\n");
 }
 
@@ -97,7 +112,26 @@ char get_choice()
  */
 void list_files(FILE *s)
 {
+    // LIST command
+    fprintf(s, "LIST\n");
     
+    // Get response and check for error
+    char response[1000];
+    char code[10];
+    fgets(response, 1000, s);
+    if (strcmp(response, "+OK\n") != 0)
+    {
+        fprintf(stderr, "Something went wrong!\n");
+        exit(4);
+    }
+    
+    // Print response
+    while (fgets(response, 1000, s))
+    {
+        if (strcmp(response, ".\n") == 0) break;
+        printf("%s", response);
+    }
+    printf("\n");
 }
 
 /*
