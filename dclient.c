@@ -87,6 +87,7 @@ FILE * connect_to_server()
  */
 void menu()
 {
+    printf("== MENU ==\n");
     printf("L) List files\n");
     printf("D) Download a file\n");
     printf("A) Download all files\n");
@@ -142,7 +143,61 @@ void list_files(FILE *s)
  */
 void download(FILE *s)
 {
+    // Prompt user
+    printf("What file? ");
+    char file_name[100];
+    fgets(file_name, 100, stdin);
+    file_name[strlen(file_name) - 1] = '\0';
     
+    // SIZE command
+    char size_response[1000];
+    fprintf(s, "SIZE %s\n", file_name);
+    fgets(size_response, 1000, s);
+    int size;
+    sscanf(size_response, "+OK %d", &size);
+    
+    // GET command
+    printf("Downloading %s...", file_name);
+    fprintf(s, "GET %s\n", file_name);
+    char response[1000];
+    char code[10];
+    fgets(response, 1000, s);
+    if (strcmp(response, "+OK\n") != 0)
+    {
+        fprintf(stderr, "Something went wrong!\n");
+        exit(4);
+    }
+
+    // Open file for writing and check
+    FILE *out = fopen(file_name, "wb");
+    if (!out)
+    {
+        fprintf(stderr, "Can't write to %s\n", file_name);
+        exit(1);
+    }
+    
+    // Save data to file
+    unsigned char data[100];
+    int so_far = 0;
+    int got;
+    while (1)
+    {
+        if (so_far + 100 < size)
+        {
+            got = fread(data, sizeof(unsigned char), 100, s);
+            fwrite(data, sizeof(unsigned char), got, out);
+            so_far += got;
+        }
+        else
+        {
+            got = fread(data, sizeof(unsigned char), size - so_far, s);
+            fwrite(data, sizeof(unsigned char), got, out);
+            break;
+        }
+    }
+    fclose(out);
+    
+    printf("DONE\n\n");
 }
 
 /* 
