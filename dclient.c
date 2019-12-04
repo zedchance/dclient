@@ -229,7 +229,7 @@ void download_all(FILE *s)
     
     // Save all files
     char response[1000];
-    for (int i = 0; i < file_count; i++)
+    for (int i = 0; i < file_count - 1; i++)
     {
         // GET command
         fprintf(s, "GET %s\n", files[i].name);
@@ -244,9 +244,14 @@ void download_all(FILE *s)
     }
 }
 
+/*
+ * Used to save file to disk
+ * Shows a progress bar
+ */
 void save_file(FILE *s, char file_name[], int size)
 {
-    printf("Downloading %s \u2592", file_name);
+    // Start download message
+    printf("%s\t\u2592", file_name);
     fflush(stdout);
     
     // Open file for writing and check
@@ -283,6 +288,14 @@ void save_file(FILE *s, char file_name[], int size)
         {
             got = fread(data, sizeof(unsigned char), size - so_far, s);
             fwrite(data, sizeof(unsigned char), got, out);
+            if (progress < 19)
+            {
+                for (int i = 0; i < 20 - progress; i++)
+                {
+                    printf("\u2588");
+                    fflush(stdout);
+                }
+            }
             break;
         }
     }
