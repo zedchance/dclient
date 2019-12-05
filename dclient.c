@@ -4,6 +4,12 @@
 #include <sys/stat.h> // For stat struct
 #include <libsocket/libinetsocket.h>
 
+typedef struct file
+{
+    char name[25];
+    int size;
+} file;
+
 FILE * connect_to_server();
 void menu();
 char get_choice();
@@ -11,13 +17,8 @@ void list_files(FILE *s);
 void download(FILE *s);
 void download_all(FILE *s);
 void save_file(FILE *s, char file_name[], int size);
+file * get_list(FILE *s, int *file_count);
 void quit(FILE *s);
-
-typedef struct file
-{
-    char name[25];
-    int size;
-} file;
 
 int main()
 {
@@ -183,6 +184,7 @@ void download(FILE *s)
         scanf("%c", &answer);
         
         // Clear \n char at end of stdin
+        // https://stackoverflow.com/a/7898516
         int c;
         while ((c = getchar()) != '\n' && c != EOF) { }
         
@@ -217,37 +219,9 @@ void download(FILE *s)
  */
 void download_all(FILE *s)
 {
-    // LIST command
-    fprintf(s, "LIST\n");
-    
-    // Get response and check for error
-    char list[1000];
-    fgets(list, 1000, s);
-    if (strcmp(list, "+OK\n") != 0)
-    {
-        fprintf(stderr, "Something went wrong!\n");
-        exit(5);
-    }
-    
     // Create array of filenames and sizes
-    file *files = malloc(20 * sizeof(file));
     int file_count = 0;
-    for (int i = 0; ; i++)
-    {
-        // Break at end of list
-        if (strcmp(list, ".\n") == 0) break;
-        
-        // TODO Check if files array needs to be longer
-
-        // Determine filename and size
-        fgets(list, 1000, s);
-        char file_name[20];
-        int size;
-        sscanf(list, "%d %s", &size, file_name);
-        strcpy(files[i].name, file_name);
-        files[i].size = size;
-        file_count++;
-    }
+    file *files = get_list(s, &file_count);
     
     // Display message
     printf("Downloading %d files...\n", file_count - 1);
@@ -338,6 +312,46 @@ void save_file(FILE *s, char file_name[], int size)
     fclose(out);
     printf("\u2592 DONE\n");
     fflush(stdout);
+}
+
+/*
+ * Returns an array of file structs
+ * using the LIST command
+ */
+file * get_list(FILE *s, int *file_count)
+{
+    // LIST command
+    fprintf(s, "LIST\n");
+    
+    // Get response and check for error
+    char list[1000];
+    fgets(list, 1000, s);
+    if (strcmp(list, "+OK\n") != 0)
+    {
+        fprintf(stderr, "Something went wrong!\n");
+        exit(5);
+    }
+    
+    file *files = malloc(20 * sizeof(file));
+    int count = 0;
+    for (int i = 0; ; i++)
+    {
+        // Break at end of list
+        if (strcmp(list, ".\n") == 0) break;
+        
+        // TODO Check if files array needs to be longer
+
+        // Determine filename and size
+        fgets(list, 1000, s);
+        char file_name[20];
+        int size;
+        sscanf(list, "%d %s", &size, file_name);
+        strcpy(files[i].name, file_name);
+        files[i].size = size;
+        count++;
+    }
+    *file_count = count;
+    return files;
 }
 
 /* 
