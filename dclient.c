@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h> // For stat struct
 #include <libsocket/libinetsocket.h>
 
 FILE * connect_to_server();
@@ -138,6 +139,8 @@ void list_files(FILE *s)
         exit(4);
     }
     
+    // TODO format the sizes as human readable
+    
     // Print response
     int file_num = 1;
     printf("Num\tFilename\tSize\n");
@@ -162,11 +165,31 @@ void list_files(FILE *s)
  */
 void download(FILE *s)
 {
+    // TODO let user pick file number to download
+    
     // Prompt user
     printf("What file? (num/filename) ");
     char file_name[100];
     fgets(file_name, 100, stdin);
     file_name[strlen(file_name) - 1] = '\0';
+    
+    // Check if the file is already on disk
+    struct stat s1;
+    if (stat(file_name, &s1) == 0)
+    {
+        // Prompt user to overwrite file
+        printf("%s\tAlready downloaded...overwrite? (y/n) ", file_name);
+        char answer;
+        scanf("%c", &answer);
+        
+        // Clear \n char at end of stdin
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        
+        // Continue on if Y | y, otherwise break
+        if (answer == 'y' || answer == 'Y') { }
+        else return;
+    }
     
     // SIZE command
     char size_response[1000];
@@ -214,9 +237,8 @@ void download_all(FILE *s)
         // Break at end of list
         if (strcmp(list, ".\n") == 0) break;
         
-        // TODO
-        // Check if files array needs to be longer
-        
+        // TODO Check if files array needs to be longer
+
         // Determine filename and size
         fgets(list, 1000, s);
         char file_name[20];
@@ -227,20 +249,32 @@ void download_all(FILE *s)
         file_count++;
     }
     
+    // Display message
+    printf("Downloading %d files...\n", file_count - 1);
+    fflush(stdout);
+    
     // Save all files
     char response[1000];
     for (int i = 0; i < file_count - 1; i++)
     {
-        // GET command
-        fprintf(s, "GET %s\n", files[i].name);
-        fgets(response, 1000, s);
-        if (strcmp(response, "+OK\n") != 0)
+        // Check if the file is already on disk
+        struct stat s1;
+        if (stat(files[i].name, &s1) == 0)
         {
-            fprintf(stderr, "Something went wrong!\n");
-            exit(6);
+            printf("%s\tAlready downloaded...\n", files[i].name);
         }
-        
-        save_file(s, files[i].name, files[i].size);
+        else
+        {
+            // GET command
+            fprintf(s, "GET %s\n", files[i].name);
+            fgets(response, 1000, s);
+            if (strcmp(response, "+OK\n") != 0)
+            {
+                fprintf(stderr, "Something went wrong!\n");
+                exit(6);
+            }
+            save_file(s, files[i].name, files[i].size);
+        }
     }
 }
 
@@ -303,6 +337,7 @@ void save_file(FILE *s, char file_name[], int size)
     // Close file
     fclose(out);
     printf("\u2592 DONE\n");
+    fflush(stdout);
 }
 
 /* 
