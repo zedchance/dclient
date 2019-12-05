@@ -102,7 +102,7 @@ FILE * connect_to_server()
  */
 void menu()
 {
-    printf("-- MENU --\n");
+    printf("\n-- MENU --\n");
     printf("L) List files\n");
     printf("D) Download a file\n");
     printf("A) Download all files\n");
@@ -155,7 +155,6 @@ void list_files(FILE *s)
         printf("\n");
         file_num++;
     }
-    printf("\n");
 }
 
 /*
@@ -166,7 +165,6 @@ void list_files(FILE *s)
  */
 void download(FILE *s)
 {
-    // TODO let user pick file number to download
     // Create array of filenames and sizes
     int file_count = 0;
     file *files = get_list(s, &file_count);
@@ -183,13 +181,35 @@ void download(FILE *s)
     // Check if user entered file number
     if (file_number)
     {
+        if (file_number > file_count - 1)
+        {
+            printf("ERRROR: File number %d out of range.\n", file_number);
+            return;
+        }
         strcpy(file_name, files[file_number - 1].name);
     }
-    
+    else
+    {
+        for (int i = 0; i < file_count; i++)
+        {
+            if (strcmp(file_name, files[i].name) == 0)
+            {
+                break;
+            }
+            else if (strcmp(file_name, files[i].name) != 0 && i == file_count - 1)
+            {
+                printf("ERROR: %s not found.\n", file_name);
+                return;
+            }
+        }
+    }
+
     // Check if the file is already on disk
     struct stat s1;
     if (stat(file_name, &s1) == 0)
     {
+        // TODO This should check to see if the file sizes are the same also
+        
         // Prompt user to overwrite file
         printf("%s\tAlready downloaded...overwrite? (y/n) ", file_name);
         char answer;
