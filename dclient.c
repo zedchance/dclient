@@ -141,8 +141,6 @@ void list_files(FILE *s)
         exit(4);
     }
     
-    // TODO format the sizes as human readable
-    
     // Print response
     int file_num = 1;
     printf("Num\tFilename\tSize\n");
@@ -417,5 +415,7 @@ char * convert_size(double s)
  */
 void quit(FILE *s)
 {
+    // Issue QUIT command and close file
+    fprintf(s, "QUIT\n");
     fclose(s);
 }
