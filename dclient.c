@@ -167,12 +167,24 @@ void list_files(FILE *s)
 void download(FILE *s)
 {
     // TODO let user pick file number to download
+    // Create array of filenames and sizes
+    int file_count = 0;
+    file *files = get_list(s, &file_count);
     
     // Prompt user
     printf("What file? (num/filename) ");
+    char user_entry[100];
+    fgets(user_entry, 100, stdin);
     char file_name[100];
-    fgets(file_name, 100, stdin);
-    file_name[strlen(file_name) - 1] = '\0';
+    int file_number = 0;
+    sscanf(user_entry, "%s", file_name);
+    sscanf(user_entry, "%d", &file_number);
+    
+    // Check if user entered file number
+    if (file_number)
+    {
+        strcpy(file_name, files[file_number - 1].name);
+    }
     
     // Check if the file is already on disk
     struct stat s1;
@@ -339,7 +351,7 @@ file * get_list(FILE *s, int *file_count)
         // Break at end of list
         if (strcmp(list, ".\n") == 0) break;
         
-        // TODO Check if files array needs to be longer
+        // TODO Check if files array needs to be realloc
 
         // Determine filename and size
         fgets(list, 1000, s);
