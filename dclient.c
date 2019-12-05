@@ -18,6 +18,7 @@ void download(FILE *s);
 void download_all(FILE *s);
 void save_file(FILE *s, char file_name[], int size);
 file * get_list(FILE *s, int *file_count);
+char * convert_size(double s);
 void quit(FILE *s);
 
 int main()
@@ -148,10 +149,10 @@ void list_files(FILE *s)
     while (fgets(response, 1000, s))
     {
         if (strcmp(response, ".\n") == 0) break;
-        char num[20];
+        double size = 0;
         char name[20];
-        sscanf(response, "%s %s", num, name);
-        printf("%d\t%s\t%s", file_num, name, num);
+        sscanf(response, "%lf %s", &size, name);
+        printf("%d\t%s\t%s", file_num, name, convert_size(size));
         printf("\n");
         file_num++;
     }
@@ -168,8 +169,8 @@ void download(FILE *s)
     // Create array of filenames and sizes
     int file_count = 0;
     file *files = get_list(s, &file_count);
-    
-    // Prompt user
+
+    // Prompt user and parse input
     printf("What file? (num/filename) ");
     char user_entry[100];
     fgets(user_entry, 100, stdin);
@@ -177,10 +178,11 @@ void download(FILE *s)
     int file_number = 0;
     sscanf(user_entry, "%s", file_name);
     sscanf(user_entry, "%d", &file_number);
-    
+
     // Check if user entered file number
     if (file_number)
     {
+        // If file_number is bigger than file_count then show error and return
         if (file_number > file_count - 1)
         {
             printf("ERRROR: File number %d out of range.\n", file_number);
@@ -190,6 +192,7 @@ void download(FILE *s)
     }
     else
     {
+        // Check to see if file_name is in files array
         for (int i = 0; i < file_count; i++)
         {
             if (strcmp(file_name, files[i].name) == 0)
@@ -384,6 +387,29 @@ file * get_list(FILE *s, int *file_count)
     }
     *file_count = count;
     return files;
+}
+
+/* 
+ * Converts file sizes to human readable versions
+ */
+char * convert_size(double s)
+{
+    char ret[30];
+    if (s < 1024)
+    {
+        sprintf(ret, "%.0fB", s);
+    }
+    else if (s < 1048576)
+    {
+        s = s / 1024;
+        sprintf(ret, "%.1fK", s);
+    }
+    else
+    {
+        s = s / 1048576;
+        sprintf(ret, "%.1fM", s);
+    }
+    return ret;
 }
 
 /* 
