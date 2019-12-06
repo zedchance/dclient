@@ -308,14 +308,15 @@ void save_file(FILE *s, char file_name[], int size)
     int progress = 1;
     
     // Save data to file
-    unsigned char data[100];
+    int cup_size = 100;
+    unsigned char data[cup_size];
     int so_far = 0;
     int got;
     while (1)
     {
-        if (so_far + 100 < size)
+        if (so_far + cup_size < size)
         {
-            got = fread(data, sizeof(unsigned char), 100, s);
+            got = fread(data, sizeof(unsigned char), cup_size, s);
             fwrite(data, sizeof(unsigned char), got, out);
             so_far += got;
             if (tick_size * progress < so_far)
@@ -392,7 +393,7 @@ file * get_list(FILE *s, int *file_count)
  */
 char * convert_size(double s)
 {
-    char ret[30];
+    char *ret = malloc(30 * sizeof(char));
     if (s < 1024)
     {
         sprintf(ret, "%.0fB", s);
