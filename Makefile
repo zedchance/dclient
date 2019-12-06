@@ -8,5 +8,8 @@ dclient: dclient.c
 test: dclient
 	./dclient
 
+check: dclient
+	valgrind ./dclient
+
 clean:
 	rm -f dclient *.txt *.jpg *.gz *.exe *.raw core

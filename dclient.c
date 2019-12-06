@@ -18,7 +18,7 @@ void download(FILE *s);
 void download_all(FILE *s);
 void save_file(FILE *s, char file_name[], int size);
 file * get_list(FILE *s, int *file_count);
-char * convert_size(double s);
+void convert_size(char *ret, double s);
 void quit(FILE *s);
 
 int main()
@@ -147,10 +147,12 @@ void list_files(FILE *s)
     while (fgets(response, 1000, s))
     {
         if (strcmp(response, ".\n") == 0) break;
-        double size = 0;
         char name[20];
+        double size = 0;
         sscanf(response, "%lf %s", &size, name);
-        printf("%d\t%s\t%s", file_num, name, convert_size(size));
+        char formatted_file_size[20];
+        convert_size(formatted_file_size, size);
+        printf("%d\t%s\t%s", file_num, name, formatted_file_size);
         printf("\n");
         file_num++;
     }
@@ -245,6 +247,9 @@ void download(FILE *s)
     
     // Save file
     save_file(s, file_name, size);
+    
+    // Free files array
+    free(files);
 }
 
 /*
@@ -283,6 +288,9 @@ void download_all(FILE *s)
             save_file(s, files[i].name, files[i].size);
         }
     }
+    
+    // Free files array
+    free(files);
 }
 
 /*
@@ -391,9 +399,8 @@ file * get_list(FILE *s, int *file_count)
 /* 
  * Converts file sizes to human readable versions
  */
-char * convert_size(double s)
+void convert_size(char *ret, double s)
 {
-    char *ret = malloc(30 * sizeof(char));
     if (s < 1024)
     {
         sprintf(ret, "%.0fB", s);
@@ -408,7 +415,6 @@ char * convert_size(double s)
         s = s / 1048576;
         sprintf(ret, "%.1fM", s);
     }
-    return ret;
 }
 
 /* 
