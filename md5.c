@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <openssl/md5.h>
 
-char *md5(const char *str, int length) {
+char * md5(const char *str, int length) {
     // Data structure for the MD5 algorithm
     MD5_CTX c;
 
