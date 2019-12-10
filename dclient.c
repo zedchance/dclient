@@ -4,6 +4,8 @@
 #include <sys/stat.h> // For stat struct
 #include <libsocket/libinetsocket.h>
 
+#include "md5.h"
+
 typedef struct file
 {
     char name[25];
@@ -14,11 +16,13 @@ FILE * connect_to_server();
 void menu();
 char get_choice();
 void list_files(FILE *s);
+void view_hash(FILE *s);
 void download(FILE *s);
 void download_all(FILE *s);
 void save_file(FILE *s, char file_name[], int size);
 file * get_list(FILE *s, int *file_count);
 void convert_size(char *ret, double s);
+char * prompt_for_filename(FILE *s);
 void quit(FILE *s);
 
 int main()
@@ -50,6 +54,11 @@ int main()
             case 'a':
             case 'A':
                 download_all(s);
+                break;
+            
+            case 'h':
+            case 'H':
+                view_hash(s);
                 break;
                 
             case 'q':
@@ -107,6 +116,7 @@ void menu()
     printf("L) List files\n");
     printf("D) Download a file\n");
     printf("A) Download all files\n");
+    printf("H) View MD5 hash of a file\n");
     printf("Q) Quit\n");
     printf("\n");
 }
@@ -159,6 +169,24 @@ void list_files(FILE *s)
 }
 
 /*
+ * Displays the md5 hash of a given file
+ */
+void view_hash(FILE *s)
+{
+    // Get file from user
+    char *file_name = prompt_for_filename(s);
+    
+    // HASH command
+    fprintf(s, "HASH %s\n", file_name);
+    char response[1000];
+    fgets(response, 1000, s);
+    char hash[100];
+    sscanf(response, "+OK %s", hash);
+    
+    printf("%s\t%s\n", file_name, hash);
+}
+
+/*
  * Download a file.
  * Prompt the user to enter a filename.
  * Download it from the server and save it to a file with the
@@ -166,46 +194,8 @@ void list_files(FILE *s)
  */
 void download(FILE *s)
 {
-    // Create array of filenames and sizes
-    int file_count = 0;
-    file *files = get_list(s, &file_count);
-
-    // Prompt user and parse input
-    printf("What file? (num/filename) ");
-    char user_entry[100];
-    fgets(user_entry, 100, stdin);
-    char file_name[100];
-    int file_number = 0;
-    sscanf(user_entry, "%s", file_name);
-    sscanf(user_entry, "%d", &file_number);
-
-    // Check if user entered file number
-    if (file_number)
-    {
-        // If file_number is bigger than file_count then show error and return
-        if (file_number > file_count - 1)
-        {
-            printf("ERRROR: File number %d out of range.\n", file_number);
-            return;
-        }
-        strcpy(file_name, files[file_number - 1].name);
-    }
-    else
-    {
-        // Check to see if file_name is in files array
-        for (int i = 0; i < file_count; i++)
-        {
-            if (strcmp(file_name, files[i].name) == 0)
-            {
-                break;
-            }
-            else if (strcmp(file_name, files[i].name) != 0 && i == file_count - 1)
-            {
-                printf("ERROR: %s not found.\n", file_name);
-                return;
-            }
-        }
-    }
+    // Get file from user
+    char *file_name = prompt_for_filename(s);
 
     // Check if the file is already on disk
     struct stat s1;
@@ -249,7 +239,7 @@ void download(FILE *s)
     save_file(s, file_name, size);
     
     // Free files array
-    free(files);
+    // free(files);
 }
 
 /*
@@ -415,6 +405,54 @@ void convert_size(char *ret, double s)
         s = s / 1048576;
         sprintf(ret, "%.1fM", s);
     }
+}
+
+/*
+ * Prompts the user for which file to select
+ * This can be a file number or name
+ */
+char * prompt_for_filename(FILE *s)
+{
+    // Create array of filenames and sizes
+    int file_count = 0;
+    file *files = get_list(s, &file_count);
+
+    // Prompt user and parse input
+    printf("What file? (num/filename) ");
+    char user_entry[100];
+    fgets(user_entry, 100, stdin);
+    char *file_name = malloc(100 * sizeof(char));
+    int file_number = 0;
+    sscanf(user_entry, "%s", file_name);
+    sscanf(user_entry, "%d", &file_number);
+
+    // Check if user entered file number
+    if (file_number)
+    {
+        // If file_number is bigger than file_count then show error and return
+        if (file_number > file_count - 1)
+        {
+            printf("ERRROR: File number %d out of range.\n", file_number);
+        }
+        strcpy(file_name, files[file_number - 1].name);
+    }
+    else
+    {
+        // Check to see if file_name is in files array
+        for (int i = 0; i < file_count; i++)
+        {
+            if (strcmp(file_name, files[i].name) == 0)
+            {
+                break;
+            }
+            else if (strcmp(file_name, files[i].name) != 0 && i == file_count - 1)
+            {
+                printf("ERROR: %s not found.\n", file_name);
+            }
+        }
+    }
+    
+    return file_name;
 }
 
 /* 
