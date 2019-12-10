@@ -178,6 +178,9 @@ void download(FILE *s)
 {
     // Get file from user
     char *file_name = prompt_for_filename(s);
+    
+    // Check for valid file
+    if (strcmp(file_name, "") == 0) return;
 
     // Check if the file is already on disk
     struct stat s1;
@@ -412,11 +415,15 @@ char * prompt_for_filename(FILE *s)
     if (file_number)
     {
         // If file_number is bigger than file_count then show error and return
-        if (file_number > file_count - 1)
+        if (file_number > file_count - 1 || file_number < 1)
         {
             printf("ERRROR: File number %d out of range.\n", file_number);
+            file_name = "";
         }
-        strcpy(file_name, files[file_number - 1].name);
+        else
+        {
+            strcpy(file_name, files[file_number - 1].name);
+        }
     }
     else
     {
@@ -430,6 +437,7 @@ char * prompt_for_filename(FILE *s)
             else if (strcmp(file_name, files[i].name) != 0 && i == file_count - 1)
             {
                 printf("ERROR: %s not found.\n", file_name);
+                file_name = "";
             }
         }
     }
