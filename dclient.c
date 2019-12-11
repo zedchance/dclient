@@ -50,7 +50,7 @@ int main()
                 break;
                 
             default:
-                printf("Choice must be d, l, a, or q\n");
+                printf("Choice must be D, L, A, H, or Q\n");
         }
     }
 }
@@ -85,6 +85,10 @@ FILE * connect_to_server()
         fprintf(stderr, "Didn't get the OK\n");
         exit(3);
     }
+    
+    // HELO command
+    fprintf(f, "HELO Zed\n");
+    fgets(response, 100, f);
     
     return f;
 }
@@ -176,32 +180,11 @@ void view_hash(FILE *s)
  */
 void download(FILE *s)
 {
-    // Get file from user
+    // Get file name from user
     char *file_name = prompt_for_filename(s);
     
     // Check for valid file
     if (strcmp(file_name, "") == 0) return;
-
-    // Check if the file is already on disk
-    struct stat s1;
-    if (stat(file_name, &s1) == 0)
-    {
-        // TODO This should check to see if the file sizes are the same also
-        
-        // Prompt user to overwrite file
-        printf("%s\tAlready downloaded...overwrite? (y/n) ", file_name);
-        char answer;
-        scanf("%c", &answer);
-        
-        // Clear \n char at end of stdin
-        // https://stackoverflow.com/a/7898516
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) { }
-        
-        // Continue on if Y | y, otherwise break
-        if (answer == 'y' || answer == 'Y') { }
-        else return;
-    }
     
     // SIZE command
     char size_response[1000];
@@ -209,6 +192,46 @@ void download(FILE *s)
     fgets(size_response, 1000, s);
     int size;
     sscanf(size_response, "+OK %d", &size);
+    
+    // HASH command
+    fprintf(s, "HASH %s\n", file_name);
+    char hash_reply[100];
+    fgets(hash_reply, 100, s);
+    char hash_from_server[100];   
+    sscanf(hash_reply, "+OK %s", hash_from_server);
+    fprintf(stderr, "File on server:\t%s\n", hash_from_server);
+    
+    // Check if the file is already on disk
+    struct stat s1;
+    if (stat(file_name, &s1) == 0)
+    {
+        // Gen MD5 hash of file on disk
+        char *hash = md5(file_name, size);
+        fprintf(stderr, "File on disk:\t%s\n", hash);
+        
+        // Check hashes
+        if (strcmp(hash, hash_from_server) == 0)
+        {
+            printf("File already on disk (hashes match)\n");
+            return;
+        }
+        else
+        {
+            // Prompt user to overwrite file
+            printf("%s\tNon-matching hashes!\nOverwrite? (y/n) ", file_name);
+            char answer;
+            scanf("%c", &answer);
+            
+            // Clear \n char at end of stdin
+            // https://stackoverflow.com/a/7898516
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF) { }
+            
+            // Continue on if Y | y, otherwise break
+            if (answer == 'y' || answer == 'Y') { }
+            else return;
+        }
+    }
     
     // GET command
     fprintf(s, "GET %s\n", file_name);
@@ -222,6 +245,13 @@ void download(FILE *s)
     
     // Save file
     save_file(s, file_name, size);
+    
+    // Check if file downloaded has correct hash
+    char *hash = md5(file_name, size);
+    if (strcmp(hash, hash_from_server) != 0)
+    {
+        printf("Download was compromised (non-matching hashes)\n");
+    }
     
     // Free files array
     // free(files);
