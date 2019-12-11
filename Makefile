@@ -20,4 +20,4 @@ check: dclient
 	valgrind ./dclient
 
 clean:
-	rm -f *.o dclient *.txt *.jpg *.gz *.exe *.raw core
+	rm -f dclient*.o *.txt *.jpg *.gz *.exe *.raw  *.mp3 core

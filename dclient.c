@@ -139,7 +139,7 @@ void list_files(FILE *s)
     
     // Print response
     int file_num = 1;
-    printf("Num\tFilename\tSize\n");
+    printf("Num\tSize\tFilename\n");
     while (fgets(response, 1000, s))
     {
         if (strcmp(response, ".\n") == 0) break;
@@ -148,7 +148,7 @@ void list_files(FILE *s)
         sscanf(response, "%lf %s", &size, name);
         char formatted_file_size[20];
         convert_size(formatted_file_size, size);
-        printf("%d\t%s\t%s", file_num, name, formatted_file_size);
+        printf("%d\t%s\t%s", file_num, formatted_file_size, name);
         printf("\n");
         file_num++;
     }
@@ -199,58 +199,62 @@ void download(FILE *s)
     fgets(hash_reply, 100, s);
     char hash_from_server[100];   
     sscanf(hash_reply, "+OK %s", hash_from_server);
-    fprintf(stderr, "File on server:\t%s\n", hash_from_server);
     
     // Check if the file is already on disk
     struct stat s1;
     if (stat(file_name, &s1) == 0)
     {
+        printf("File on server:\t%s\n", hash_from_server);
+        
         // Gen MD5 hash of file on disk
         char *hash = md5(file_name, size);
-        fprintf(stderr, "File on disk:\t%s\n", hash);
+        printf("File on disk:\t%s\n", hash);
         
         // Check hashes
         if (strcmp(hash, hash_from_server) == 0)
         {
             printf("File already on disk (hashes match)\n");
-            return;
         }
-        else
+        
+        // Prompt user to overwrite file
+        printf("%s\tOverwrite? (y/n) ", file_name);
+        char answer;
+        scanf("%c", &answer);
+        
+        // Clear \n char at end of stdin
+        // https://stackoverflow.com/a/7898516
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        
+        // Continue on if Y | y, otherwise break
+        if (answer == 'y' || answer == 'Y') { }
+        else return;
+    }
+    
+    // Download file, retrying if download was compromised
+    while(1)
+    {
+        // GET command
+        fprintf(s, "GET %s\n", file_name);
+        char response[1000];
+        fgets(response, 1000, s);
+        if (strcmp(response, "+OK\n") != 0)
         {
-            // Prompt user to overwrite file
-            printf("%s\tNon-matching hashes!\nOverwrite? (y/n) ", file_name);
-            char answer;
-            scanf("%c", &answer);
-            
-            // Clear \n char at end of stdin
-            // https://stackoverflow.com/a/7898516
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF) { }
-            
-            // Continue on if Y | y, otherwise break
-            if (answer == 'y' || answer == 'Y') { }
-            else return;
+            fprintf(stderr, "Something went wrong!\n");
+            exit(4);
         }
-    }
-    
-    // GET command
-    fprintf(s, "GET %s\n", file_name);
-    char response[1000];
-    fgets(response, 1000, s);
-    if (strcmp(response, "+OK\n") != 0)
-    {
-        fprintf(stderr, "Something went wrong!\n");
-        exit(4);
-    }
-    
-    // Save file
-    save_file(s, file_name, size);
-    
-    // Check if file downloaded has correct hash
-    char *hash = md5(file_name, size);
-    if (strcmp(hash, hash_from_server) != 0)
-    {
-        printf("Download was compromised (non-matching hashes)\n");
+        
+        // Save file
+        save_file(s, file_name, size);
+        
+        // Check if file downloaded has correct hash
+        char *hash = md5(file_name, size);
+        if (strcmp(hash, hash_from_server) != 0)
+        {
+            printf("Download was compromised (non-matching hashes)\n");
+            printf("Retrying...\n");
+        }
+        else break;
     }
     
     // Free files array
