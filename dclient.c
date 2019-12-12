@@ -254,9 +254,13 @@ void download(FILE *s)
             printf("Download was compromised (non-matching hashes)\n");
             printf("Retrying...\n");
         }
-        else break;
+        else
+        {
+            printf("Downloaded succesfully.\n");
+            break;
+        }
     }
-    
+
     // Free files array
     // free(files);
 }
@@ -278,6 +282,8 @@ void download_all(FILE *s)
     char response[1000];
     for (int i = 0; i < file_count - 1; i++)
     {
+        // TODO make this take the hash of the file into consideration
+        
         // Check if the file is already on disk
         struct stat s1;
         if (stat(files[i].name, &s1) == 0)
